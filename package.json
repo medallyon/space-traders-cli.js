@@ -6,6 +6,7 @@
 	"type": "module",
 	"scripts": {
 		"build": "tsc",
+		"generate-types": "git clone https://github.com/medallyon/space-traders-api-docs.git .temp/space-traders-api-docs & cd .temp/space-traders-api-docs && npx openapi-typescript && npx shx mv openapi/openapi.ts ../../src/SpaceTradersApi.d.ts && cd ../.. && npx shx rm -rf .temp",
 		"start": "node dist/index.js",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
