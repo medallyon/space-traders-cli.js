@@ -21,7 +21,7 @@
 			"label": "tsc: watch - tsconfig.json"
 		},
 		{
-			"label": "👼 Generate SpaceTraders Type Definitions",
+			"label": "👼 Update SpaceTraders Type Definitions",
 			"detail": "Generate SpaceTraders Type Definitions for TypeScript using the official OpenAPI spec.",
 			"type": "shell",
 			"command": "npm run generate-types",

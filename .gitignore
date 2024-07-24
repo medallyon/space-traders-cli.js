@@ -1,3 +1,6 @@
+# SpaceTraders API Definition File (generated through build task)
+/src/SpaceTradersApi.d.ts
+
 # Logs
 logs
 *.log
