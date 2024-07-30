@@ -1,11 +1,11 @@
 import { search } from "@inquirer/prompts";
+import { oraPromise as ora } from "ora";
+
+import type { IActionModule, Nullable } from "./types";
 
 // '.js' extension is required on Node because it doesn't allow extension-less imports
-import { IActionModule, Nullable } from "./types.js";
-
 import { inferClosestActions } from "./src/functions/inferClosestAction.js";
 import getModules from "./src/util/getModules.js";
-import { oraPromise as ora } from "ora";
 
 const RANDOM_DEFAULT_ACTION_PROMPTS = [
 	"Get server status?",
@@ -18,7 +18,6 @@ const RANDOM_DEFAULT_ACTION_PROMPTS = [
 ];
 
 let inputPromptPromise: Nullable<Promise<string> & { cancel: () => void; }>;
-let exited = false;
 let modules: { [actionName: string]: IActionModule; } = {};
 
 function exit()
@@ -26,8 +25,8 @@ function exit()
 	if (inputPromptPromise)
 		inputPromptPromise.cancel();
 
-	console.log("\nFarewell, Sailor!");
-	exited = true;
+	console.log("Farewell, Sailor!");
+	process.exit();
 }
 
 async function init()
@@ -107,9 +106,12 @@ async function main()
 
 	try
 	{
-		await ora(actionModule.Run(getClient()), {
-			text: "Running action..."
+		const actionResult = await ora(actionModule.Run(getClient()), {
+			text: "Running action...",
+			successText: "Action completed successfully.",
 		});
+
+		console.log(actionResult);
 	}
 	catch (error: Error | any)
 	{
@@ -127,6 +129,6 @@ async function main()
 
 	console.log("Welcome to your SpaceTraders Console. What actions do you want to take today?\n");
 
-	while (!exited)
+	while (true)
 		await main();
 })();

@@ -5,7 +5,11 @@ const Exit: IActionModule = {
 
 	Description: "Exit the program.",
 
-	Run: async function () { }
+	Run: async function ()
+	{
+		console.log("Farewell, sailor!");
+		process.exit();
+	}
 };
 
 export default Exit;
