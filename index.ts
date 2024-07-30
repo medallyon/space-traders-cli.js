@@ -1,5 +1,5 @@
 import { search } from "@inquirer/prompts";
-import { oraPromise as ora } from "ora";
+import ora from "ora";
 
 import type { IActionModule, Nullable } from "./types";
 
@@ -8,13 +8,13 @@ import { inferClosestActions } from "./src/functions/inferClosestAction.js";
 import getModules from "./src/util/getModules.js";
 
 const RANDOM_DEFAULT_ACTION_PROMPTS = [
-	"Get server status?",
-	"When is the next server reset?",
-	"Register for a new account?",
-	"Get agent details?",
-	"List my ships?",
-	"Generate a new contract?",
-	"Exit?"
+	{ name: "Get server status?", value: "GetStatus" },
+	{ name: "When is the next server reset?", value: "NextServerReset" },
+	{ name: "Register for a new account?", value: "Register" },
+	{ name: "Get agent details?", value: "GetAgent" },
+	{ name: "List my ships?", value: "ListShips" },
+	{ name: "Generate a new contract?", value: "GenerateContract" },
+	{ name: "Exit?", value: "Exit" }
 ];
 
 let inputPromptPromise: Nullable<Promise<string> & { cancel: () => void; }>;
@@ -42,13 +42,11 @@ function getClient()
 async function main()
 {
 	inputPromptPromise = search<string>({
-		message: "(e.g. " + RANDOM_DEFAULT_ACTION_PROMPTS[Math.floor(Math.random() * RANDOM_DEFAULT_ACTION_PROMPTS.length)] + ") >",
-		// default: "e.g. " + RANDOM_DEFAULT_ACTION_PROMPTS[Math.floor(Math.random() * RANDOM_DEFAULT_ACTION_PROMPTS.length)],
-		// required: true,
+		message: "(e.g. " + RANDOM_DEFAULT_ACTION_PROMPTS[Math.floor(Math.random() * RANDOM_DEFAULT_ACTION_PROMPTS.length)]?.name + ") >",
 		source: async (term) =>
 		{
 			if (!term)
-				return RANDOM_DEFAULT_ACTION_PROMPTS.map(prompt => ({ value: prompt, name: prompt }));
+				return RANDOM_DEFAULT_ACTION_PROMPTS;
 
 			const closestActions = inferClosestActions(term, 7);
 			const actions = closestActions.map(action => ({
@@ -59,8 +57,6 @@ async function main()
 
 			return actions;
 		},
-	}, {
-		clearPromptOnDone: true,
 	});
 
 	let actionInput: string;
@@ -104,17 +100,24 @@ async function main()
 		return;
 	}
 
+	const spinner = ora("Running action...").start();
+
 	try
 	{
-		const actionResult = await ora(actionModule.Run(getClient()), {
-			text: "Running action...",
-			successText: "Action completed successfully.",
-		});
+		const actionResult = await actionModule.Run(getClient(), spinner);
+		spinner.stop();
 
-		console.log(actionResult);
+		if (typeof actionResult === "string")
+			console.log(actionResult);
+
+		if (spinner)
+			spinner.succeed("Action completed successfully.");
 	}
 	catch (error: Error | any)
 	{
+		if (spinner)
+			spinner.fail("Action failed.");
+
 		console.error(`Something went wrong while running the "${actionInput}" action. Here's the stack for the developer:`);
 		console.error(error);
 		console.error("\nPlease report this issue to the developer on GitHub: https://github.com/medallyon/space-traders-cli.js/issues");
