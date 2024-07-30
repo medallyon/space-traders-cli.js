@@ -1,14 +1,11 @@
-import * as fs from "node:fs/promises";
-import { Dirent } from "node:fs";
-
-import { input } from "@inquirer/prompts";
+import { search } from "@inquirer/prompts";
 
 // '.js' extension is required on Node because it doesn't allow extension-less imports
-import { Action, IActionModule } from "./types.js";
+import { IActionModule, Nullable } from "./types.js";
 
-import inferClosestAction from "./src/functions/inferClosestAction.js";
-
-const ACTIONS_DIRECTORY = "./src/actions";
+import { inferClosestActions } from "./src/functions/inferClosestAction.js";
+import getModules from "./src/util/getModules.js";
+import { oraPromise as ora } from "ora";
 
 const RANDOM_DEFAULT_ACTION_PROMPTS = [
 	"Get server status?",
@@ -20,38 +17,22 @@ const RANDOM_DEFAULT_ACTION_PROMPTS = [
 	"Exit?"
 ];
 
+let inputPromptPromise: Nullable<Promise<string> & { cancel: () => void; }>;
 let exited = false;
 let modules: { [actionName: string]: IActionModule; } = {};
 
+function exit()
+{
+	if (inputPromptPromise)
+		inputPromptPromise.cancel();
+
+	console.log("\nFarewell, Sailor!");
+	exited = true;
+}
+
 async function init()
 {
-	async function processItem(item: Dirent, parentPath: string = '')
-	{
-		const fullPath = `${parentPath}/${item.name}`;
-		if (item.isDirectory())
-		{
-			const contents = await fs.readdir(fullPath, { withFileTypes: true });
-			for (const content of contents)
-				await processItem(content, fullPath);
-		}
-
-		else
-		{
-			const [fileName] = item.name.split('.');
-			if (!fileName)
-				return;
-
-			// replace '.ts' with '.js' to allow Node to import the file
-			const fullPath = `${parentPath}/${fileName}.js`;
-
-			const actionModule = await import(fullPath);
-			modules[fileName] = actionModule.default;
-		}
-	}
-
-	const actions = await fs.readdir(ACTIONS_DIRECTORY, { withFileTypes: true });
-	for (const action of actions)
-		await processItem(action, ACTIONS_DIRECTORY);
+	modules = await getModules();
 }
 
 function getClient()
@@ -61,35 +42,62 @@ function getClient()
 
 async function main()
 {
-	const actionInput = await input({
-		message: ">",
-		default: "e.g. " + RANDOM_DEFAULT_ACTION_PROMPTS[Math.floor(Math.random() * RANDOM_DEFAULT_ACTION_PROMPTS.length)],
-		required: true,
+	inputPromptPromise = search<string>({
+		message: "(e.g. " + RANDOM_DEFAULT_ACTION_PROMPTS[Math.floor(Math.random() * RANDOM_DEFAULT_ACTION_PROMPTS.length)] + ") >",
+		// default: "e.g. " + RANDOM_DEFAULT_ACTION_PROMPTS[Math.floor(Math.random() * RANDOM_DEFAULT_ACTION_PROMPTS.length)],
+		// required: true,
+		source: async (term) =>
+		{
+			if (!term)
+				return RANDOM_DEFAULT_ACTION_PROMPTS.map(prompt => ({ value: prompt, name: prompt }));
+
+			const closestActions = inferClosestActions(term, 7);
+			const actions = closestActions.map(action => ({
+				name: `${(action.matchingDisplayName || action.action)}`,
+				value: action.action,
+				description: action.module.Description
+			}));
+
+			return actions;
+		},
+	}, {
+		clearPromptOnDone: true,
 	});
 
-	const closestAction = inferClosestAction(actionInput);
-	if (closestAction == null)
+	let actionInput: string;
+	try
 	{
-		console.error("No action found. Try to describe what you want to do more clearly.\n");
+		actionInput = await inputPromptPromise;
+		inputPromptPromise = null;
+	}
+	catch (error: Error | any)
+	{
+		// Exit cleanly instead of throwing an error on Ctrl+C (SIGINT)
+		if (error.constructor.name === "ExitPromptError")
+		{
+			exit();
+			return;
+		}
+
+		console.error(error);
 		return;
 	}
 
-	if (closestAction === Action.Exit)
+	if (actionInput.toUpperCase() === "EXIT")
 	{
-		console.log("Exiting...");
-		exited = true;
+		exit();
 		return;
 	}
 
-	const actionModule = modules[closestAction];
+	const actionModule = modules[actionInput];
 	if (!actionModule)
 	{
-		console.error(`Action module not yet implemented: ${closestAction}\n`);
+		console.error(`Action module not yet implemented: ${actionInput}\n`);
 		return;
 	}
 
-	// if RequiresClient is not defined, assume it requires a client
-	const requiresClient = typeof actionModule.RequiresClient === "undefined" ? true : actionModule.RequiresClient;
+	// if 'Static' is not defined, default to false
+	const requiresClient = typeof actionModule.Static === "boolean" ? !actionModule.Static : false;
 	const client = getClient();
 	if (requiresClient && !client)
 	{
@@ -97,7 +105,18 @@ async function main()
 		return;
 	}
 
-	await actionModule.Run(getClient());
+	try
+	{
+		await ora(actionModule.Run(getClient()), {
+			text: "Running action..."
+		});
+	}
+	catch (error: Error | any)
+	{
+		console.error(`Something went wrong while running the "${actionInput}" action. Here's the stack for the developer:`);
+		console.error(error);
+		console.error("\nPlease report this issue to the developer on GitHub: https://github.com/medallyon/space-traders-cli.js/issues");
+	}
 
 	console.log();
 };
