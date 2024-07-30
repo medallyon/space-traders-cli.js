@@ -72,6 +72,9 @@ export enum Action
 
 export interface IActionModule
 {
-	RequiresClient: boolean | undefined;
-	Run: (client: Undefinable<SpaceTraders>) => Promise<void>;
-}
+	// If true, this action can be run without a registered client.
+	Static: Undefinable<boolean>;
+	Description: Undefinable<string>;
+
+	Run: (client: Undefinable<SpaceTraders>) => Promise<any>;
+};

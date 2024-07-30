@@ -110,6 +110,31 @@ function hasConsecutiveCharacters(string1: string, string2: string, characters: 
 }
 
 /**
+ * Generate a chalk-ified string where matching characters are boldened.
+ * 
+ * @param input The input string.
+ * @param action The action string.
+ * 
+ * @returns The chalk-ified string with matching characters boldened.
+ */
+function generateMatchingDisplayName(input: string, action: string): string
+{
+	const normalizedInput = input.toUpperCase();
+	const normalizedAction = action.toUpperCase();
+	let displayName = "";
+
+	for (let i = 0; i < action.length; i++)
+	{
+		if (normalizedInput.includes(normalizedAction[i]))
+			displayName += bold(action[i]);
+		else
+			displayName += action[i];
+	}
+
+	return displayName;
+}
+
+/**
  * Infer the closest actions from the input string.
  * The closest actions are determined by the longest common subsequence (LCS) between the input and the action.
  * The score is adjusted based on the first match position.
@@ -153,6 +178,7 @@ export function inferClosestActions(input: string, limit: number = 20): { action
 	const mappedActions = actionScores
 		.map(({ action, score }) => ({
 			action, score,
+			matchingDisplayName: generateMatchingDisplayName(normalizedInput, action),
 			module: modules[action]
 		})) as { action: string, matchingDisplayName: string, module: IActionModule; }[];
 
