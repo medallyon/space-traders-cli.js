@@ -1,80 +1,26 @@
+import type { Ora } from "ora";
+
 export type Nullable<T> = T | null;
 
 export type Undefinable<T> = T | undefined;
 
-export enum Action
+export enum RatelimitProperty
 {
-	Status = "Status",
-	NextServerReset = "NextServerReset",
-	Exit = "Exit",
-
-	Register = "Register",
-	Authenticate = "Authenticate",
-
-	GetAgent = "GetAgent",
-	ListAgents = "ListAgents",
-	GetPublicAgent = "GetPublicAgent",
-
-	GetContract = "GetContract",
-	ListContracts = "ListContracts",
-	AcceptContract = "AcceptContract",
-	DeliverCargoToContract = "DeliverCargoToContract",
-	FulfillContract = "FulfillContract",
-
-	GetFaction = "GetFaction",
-	ListFactions = "ListFactions",
-
-	GetSystem = "GetSystem",
-	ListSystems = "ListSystems",
-	GetWaypoint = "GetWaypoint",
-	ListWaypoints = "ListWaypoints",
-	GetMarket = "GetMarket",
-	GetShipyard = "GetShipyard",
-	GetJumpgate = "GetJumpgate",
-	GetConstructionSite = "GetConstructionSite",
-	SupplyConstructionSite = "SupplyConstructionSite",
-
-	GetShip = "GetShip",
-	GetShipCargo = "GetShipCargo",
-	ListShips = "ListShips",
-	PurchaseShip = "PurchaseShip",
-	OrbitShip = "OrbitShip",
-	ShipRefine = "ShipRefine",
-	CreateChart = "CreateChart",
-	GetShipCooldown = "GetShipCooldown",
-	DockShip = "DockShip",
-	CreateSurvey = "CreateSurvey",
-	ExtractResources = "ExtractResources",
-	SiphonResources = "SiphonResources",
-	ExtractResourcesWithSurvey = "ExtractResourcesWithSurvey",
-	JettisonCargo = "JettisonCargo",
-	JumpShip = "JumpShip",
-	NavigateShip = "NavigateShip",
-	PatchShipNav = "PatchShipNav",
-	GetShipNav = "GetShipNav",
-	WarpShip = "WarpShip",
-	SellCargo = "SellCargo",
-	ScanSystems = "ScanSystems",
-	ScanWaypoints = "ScanWaypoints",
-	ScanShips = "ScanShips",
-	RefuelShip = "RefuelShip",
-	PurchaseCargo = "PurchaseCargo",
-	TransferCargo = "TransferCargo",
-	NegotiateContract = "NegotiateContract",
-	GetMounts = "GetMounts",
-	InstallMount = "InstallMount",
-	RemoveMount = "RemoveMount",
-	GetShipScrap = "GetShipScrap",
-	ScrapShip = "ScrapShip",
-	GetRepairShip = "GetRepairShip",
-	RepairShip = "RepairShip",
+	Type = "x-ratelimit-type",
+	Limit = "x-ratelimit-limit",
+	Remaining = "x-ratelimit-remaining",
+	Reset = "x-ratelimit-reset",
+	LimitBurst = "x-ratelimit-limit-burst",
+	LimitPerSecond = "x-ratelimit-limit-per-second",
 }
 
 export interface IActionModule
 {
 	// If true, this action can be run without a registered client.
 	Static: Undefinable<boolean>;
+
+	// A description of what this action does. Shown under the action in the search menu.
 	Description: Undefinable<string>;
 
-	Run: (client: Undefinable<SpaceTraders>) => Promise<any>;
+	Run: (client: Undefinable<SpaceTraders>, spinner: Undefinable<Ora>) => Promise<any>;
 };
