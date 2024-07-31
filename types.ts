@@ -2,7 +2,7 @@ import type { Ora } from "ora";
 
 export type Nullable<T> = T | null;
 
-export type Undefinable<T> = T | undefined;
+export type Undefinable<T> = T | undefined | void;
 
 export enum RatelimitProperty
 {
@@ -23,4 +23,5 @@ export interface IActionModule
 	Description: Undefinable<string>;
 
 	Run: (client: Undefinable<SpaceTraders>, spinner: Undefinable<Ora>) => Promise<any>;
+	Cleanup: Undefinable<() => Promise<void> | void>;
 };
