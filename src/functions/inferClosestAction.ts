@@ -110,12 +110,12 @@ function hasConsecutiveCharacters(string1: string, string2: string, characters: 
 }
 
 /**
- * Generate a chalk-ified string where matching characters are boldened.
+ * Generate a chalk-ified string where matching characters are boldened and spaces are added before uppercase characters.
  * 
  * @param input The input string.
  * @param action The action string.
  * 
- * @returns The chalk-ified string with matching characters boldened.
+ * @returns The chalk-ified string with matching characters boldened and spaces before uppercase characters.
  */
 function generateMatchingDisplayName(input: string, action: string): string
 {
@@ -125,6 +125,9 @@ function generateMatchingDisplayName(input: string, action: string): string
 
 	for (let i = 0; i < action.length; i++)
 	{
+		if (i > 0 && action[i] === action[i].toUpperCase())
+			displayName += " ";
+
 		if (normalizedInput.includes(normalizedAction[i]))
 			displayName += bold(action[i]);
 		else
