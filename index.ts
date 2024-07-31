@@ -6,6 +6,7 @@ import type { IActionModule, Nullable } from "./types";
 // '.js' extension is required on Node because it doesn't allow extension-less imports
 import { inferClosestActions } from "./src/functions/inferClosestAction.js";
 import getModules from "./src/util/getModules.js";
+import wait from "./src/functions/wait.js";
 
 const RANDOM_DEFAULT_ACTION_PROMPTS = [
 	{ name: "Get server status?", value: "GetStatus" },
@@ -17,21 +18,44 @@ const RANDOM_DEFAULT_ACTION_PROMPTS = [
 	{ name: "Exit?", value: "Exit" }
 ];
 
+let exited = false;
 let inputPromptPromise: Nullable<Promise<string> & { cancel: () => void; }>;
+let currentAction: Nullable<{ Module: IActionModule; Promise: Promise<any>; }>;
 let modules: { [actionName: string]: IActionModule; } = {};
 
 function exit()
 {
+	exited = true;
+
 	if (inputPromptPromise)
 		inputPromptPromise.cancel();
 
 	console.log("Farewell, Sailor!");
-	process.exit();
+
+	process.exit(0);
 }
 
 async function init()
 {
 	modules = await getModules();
+
+	process.on("SIGINT", async function ()
+	{
+		// FIXME: Never seen this log, so not sure that it works
+		console.log("Received SIGINT!!");
+
+		// Cancel and clean up the current action
+		if (currentAction)
+		{
+			const { Module: module, Promise: actionPromise } = currentAction;
+			await Promise.race([actionPromise, new Promise(resolve => wait(0).then(resolve))]);
+			if (typeof module.Cleanup === "function")
+				await module.Cleanup();
+		}
+
+		else
+			exit();
+	});
 }
 
 function getClient()
@@ -104,8 +128,19 @@ async function main()
 
 	try
 	{
-		const actionResult = await actionModule.Run(getClient(), spinner);
-		spinner.stop();
+		currentAction = {
+			Module: actionModule,
+			Promise: actionModule.Run(client, spinner)
+		};
+
+		const actionResult = await currentAction.Promise;
+		if (typeof actionModule.Cleanup === "function")
+			await actionModule.Cleanup();
+
+		currentAction = null;
+
+		if (spinner)
+			spinner.stop();
 
 		if (typeof actionResult === "string")
 			console.log(actionResult);
@@ -115,6 +150,15 @@ async function main()
 	}
 	catch (error: Error | any)
 	{
+		if (error.constructor.name === "ExitPromptError")
+		{
+			// FIXME: Breaks the CLI. No further output is shown after "Action Aborted".
+			console.log();
+			if (spinner)
+				spinner.warn("Action aborted.\n");
+			return;
+		}
+
 		if (spinner)
 			spinner.fail("Action failed.");
 
@@ -132,6 +176,6 @@ async function main()
 
 	console.log("Welcome to your SpaceTraders Console. What actions do you want to take today?\n");
 
-	while (true)
+	while (!exited)
 		await main();
 })();
